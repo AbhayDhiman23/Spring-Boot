@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Voting System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .menu-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .category-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+        }
+        .menu-card {
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .menu-card:hover {
+            transform: translateY(-5px);
+        }
+        .votes-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .menu-image {
+            height: 200px;
+            object-fit: cover;
+            border-top-left-radius: calc(0.375rem - 1px);
+            border-top-right-radius: calc(0.375rem - 1px);
+        }
+        .price-tag {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .flash-message {
+            animation: fadeOut 5s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .api-endpoint {
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <div class="text-center mb-5">
+            <h1 class="display-4">🍽️ Menu Voting System</h1>
+            <p class="lead text-muted">Vote for your favorite dishes!</p>
+        </div>
+
+        <!-- Flash Messages -->
+        <div th:if="${message}" class="alert alert-success flash-message text-center" role="alert">
+            <span th:text="${message}">Success message</span>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <a th:href="@{/}" class="btn btn-outline-primary me-2" th:classappend="${selectedCategory == null ? 'active' : ''}">All</a>
+                    <a th:each="cat : ${categories}" 
+                       th:href="@{/(category=${cat})}"
+                       class="btn btn-outline-primary me-2"
+                       th:classappend="${selectedCategory == cat ? 'active' : ''}"
+                       th:text="${#strings.toLowerCase(cat).replace('_', ' ')}">Category</a>
+                </div>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                    <i class="fas fa-plus"></i> Add New Item
+                </button>
+            </div>
+        </div>
+
+        <!-- Menu Items Grid -->
+        <div class="row g-4">
+            <div th:if="${menuItems.empty}" class="col-12">
+                <div class="alert alert-info text-center" role="alert">
+                    No menu items available. Add some items to get started!
+                </div>
+            </div>
+            
+            <div th:each="item : ${menuItems}" class="col-md-6 col-lg-4">
+                <div class="card menu-card">
+                    <img th:if="${item.imageUrl}" th:src="${item.imageUrl}" class="menu-image" alt="Food image">
+                    <img th:unless="${item.imageUrl}" src="https://via.placeholder.com/400x300?text=No+Image" class="menu-image" alt="Placeholder">
+                    <div class="votes-badge">
+                        <i class="fas fa-star"></i> <span th:text="${item.votes}">0</span> votes
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0" th:text="${item.name}">Item Name</h5>
+                            <span class="price-tag" th:text="${'$' + #numbers.formatDecimal(item.price, 1, 2)}">$0.00</span>
+                        </div>
+                        <p class="card-text text-muted" th:text="${item.description}">Description</p>
+                        <span class="category-badge badge bg-info mb-3" 
+                              th:text="${item.category != null ? #strings.toLowerCase(item.category.name()).replace('_', ' ') : 'uncategorized'}">Category</span>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-group">
+                                <form th:action="@{/vote/{id}(id=${item.id})}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-thumbs-up"></i> Vote
+                                    </button>
+                                </form>
+                                <form th:action="@{/unvote/{id}(id=${item.id})}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-thumbs-down"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-secondary btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editItemModal"
+                                        th:data-item-id="${item.id}"
+                                        th:data-item-name="${item.name}"
+                                        th:data-item-description="${item.description}"
+                                        th:data-item-price="${item.price}"
+                                        th:data-item-category="${item.category}"
+                                        th:data-item-image-url="${item.imageUrl}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <form th:action="@{/delete-item/{id}(id=${item.id})}" method="post" style="display: inline;"
+                                      onsubmit="return confirm('Are you sure you want to delete this item?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Item Modal -->
+        <div class="modal fade" id="addItemModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Menu Item</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="/add-item" method="post">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="price" class="form-label">Price ($)</label>
+                                <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option th:each="cat : ${categories}"
+                                            th:value="${cat}"
+                                            th:text="${#strings.toLowerCase(cat.name()).replace('_', ' ')}">Category</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="imageUrl" class="form-label">Image URL (optional)</label>
+                                <input type="url" class="form-control" id="imageUrl" name="imageUrl">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Add Item</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Item Modal -->
+        <div class="modal fade" id="editItemModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Menu Item</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form id="editItemForm" method="post">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="editName" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="editName" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="editDescription" name="description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editPrice" class="form-label">Price ($)</label>
+                                <input type="number" class="form-control" id="editPrice" name="price" step="0.01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editCategory" class="form-label">Category</label>
+                                <select class="form-select" id="editCategory" name="category" required>
+                                    <option th:each="cat : ${categories}"
+                                            th:value="${cat}"
+                                            th:text="${#strings.toLowerCase(cat.name()).replace('_', ' ')}">Category</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editImageUrl" class="form-label">Image URL (optional)</label>
+                                <input type="url" class="form-control" id="editImageUrl" name="imageUrl">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Information
+        <div class="card mt-5">
+            <div class="card-body">
+                <h3 class="card-title">📡 REST API Endpoints</h3>
+                <p class="card-text">You can also interact with this system via REST API:</p>
+                <div class="api-endpoint">GET /api/menu - Get all menu items</div>
+                <div class="api-endpoint">GET /api/menu/category/{category} - Get items by category</div>
+                <div class="api-endpoint">POST /api/menu - Add new menu item</div>
+                <div class="api-endpoint">PUT /api/menu/{id} - Update menu item</div>
+                <div class="api-endpoint">DELETE /api/menu/{id} - Delete menu item</div>
+                <div class="api-endpoint">POST /api/menu/{id}/vote - Vote for a menu item</div>
+                <div class="api-endpoint">POST /api/menu/{id}/unvote - Remove vote from menu item</div>
+            </div>
+        </div>
+    </div> -->
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js"></script>
+    
+    <!-- Edit Modal Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editItemModal = document.getElementById('editItemModal');
+            editItemModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const itemId = button.getAttribute('data-item-id');
+                const itemName = button.getAttribute('data-item-name');
+                const itemDescription = button.getAttribute('data-item-description');
+                const itemPrice = button.getAttribute('data-item-price');
+                const itemCategory = button.getAttribute('data-item-category');
+                const itemImageUrl = button.getAttribute('data-item-image-url');
+
+                const form = editItemModal.querySelector('#editItemForm');
+                form.action = `/edit-item/${itemId}`;
+                form.querySelector('#editName').value = itemName;
+                form.querySelector('#editDescription').value = itemDescription;
+                form.querySelector('#editPrice').value = itemPrice;
+                form.querySelector('#editCategory').value = itemCategory;
+                form.querySelector('#editImageUrl').value = itemImageUrl || '';
+            });
+        });
+    </script>
+</body>
+</html>

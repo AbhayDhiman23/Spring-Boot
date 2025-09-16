@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Menu Voting System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h1 class="card-title text-danger mb-4">😟 Oops! Something went wrong</h1>
+                        <p class="card-text" th:if="${error}" th:text="${error}">Error message here</p>
+                        <p class="card-text" th:unless="${error}">An unexpected error occurred. Please try again later.</p>
+                        <div class="mt-4">
+                            <a href="/" class="btn btn-primary">Return to Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
